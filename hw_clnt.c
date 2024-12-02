@@ -7,14 +7,59 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <signal.h>
+#include <sys/stat.h>
 
 #define FILE_LEN 32
 #define BUF_SIZE 1024
+
+struct file_data
+{
+	int file_size;
+	char file_name[FILE_LEN];	
+	char file_path[FILE_LEN];
+};
+
+
 void error_handling(char *message);
+void list_files(const char *dir_path) {
+    struct dirent *entry;
+    DIR *dp = opendir(dir_path);
+
+    if (dp == NULL) {
+        error_handling("Directory open error");
+    }
+
+    while ((entry = readdir(dp)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+
+        struct stat check_dir;
+        if (stat(full_path, &check_dir) == -1) {
+            perror("stat error");
+            continue;
+        }
+
+        if (S_ISREG(check_dir.st_mode)) {
+            printf("File: %s\n", full_path);
+			//여기서 thread 만들어서, 구조체 넘겨주기
+        }
+        else if (S_ISDIR(check_dir.st_mode)) {
+            printf("Directory: %s\n", full_path);
+            list_files(full_path);
+        }
+    }
+
+    closedir(dp);
+}
+
+
+int sd;
 
 int main(int argc, char *argv[])
 {
-	int sd;
 	FILE *fp;
 	
 	char file_name[FILE_LEN];
@@ -37,14 +82,13 @@ int main(int argc, char *argv[])
 
 	connect(sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
 	
-    DIR *dir = opendir(argv[3]);
-    if (dir == NULL) {
-        error_handling("Directory open error");
-    }
+	list_files(argv[3]);
 
     // Send directory name
     write(sd, argv[3], FILE_LEN);
     printf("Sending directory: %s\n", argv[3]);
+
+
 
 	// Send file name 
 	strcpy(file_name, argv[3]);
