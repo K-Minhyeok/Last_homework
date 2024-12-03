@@ -10,18 +10,27 @@
 #include <sys/stat.h>
 
 #define FILE_LEN 32
+#define MAX_NUM_FILE 32
 #define BUF_SIZE 1024
 
-struct file_data
+typedef struct File_data
 {
-	int file_size;
 	char file_name[FILE_LEN];	
-	char file_path[FILE_LEN];
-};
+	//char file_path[FILE_LEN];
+
+}File_data;
+
+pthread_t thread; 
+int count=0;
+int sd;
+File_data *file_data;
 
 
 void error_handling(char *message);
-void list_files(const char *dir_path) {
+void *handle_client(void *arg);
+
+
+void list_files_for_count(char *dir_path) {
     struct dirent *entry;
     DIR *dp = opendir(dir_path);
 
@@ -44,11 +53,49 @@ void list_files(const char *dir_path) {
 
         if (S_ISREG(check_dir.st_mode)) {
             printf("File: %s\n", full_path);
-			//여기서 thread 만들어서, 구조체 넘겨주기
+			count++;
         }
         else if (S_ISDIR(check_dir.st_mode)) {
             printf("Directory: %s\n", full_path);
-            list_files(full_path);
+            list_files_for_count(full_path);
+        }
+    }
+
+    closedir(dp);
+}
+
+int list_files_for_thread(char *dir_path) {
+    struct dirent *entry;
+	File_data file_data_to_send;
+
+    DIR *dp = opendir(dir_path);
+
+    if (dp == NULL) {
+        error_handling("Directory open error");
+    }
+
+    while ((entry = readdir(dp)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+
+        struct stat check_dir;
+        if (stat(full_path, &check_dir) == -1) {
+            perror("stat error");
+            continue;
+        }
+
+        if (S_ISREG(check_dir.st_mode)) {
+            printf("File: %s\n", full_path);
+			strcpy(file_data_to_send.file_name,full_path);
+			pthread_create(&thread, NULL, handle_client, (void*)&file_data_to_send);
+			pthread_detach(thread);
+
+        }
+        else if (S_ISDIR(check_dir.st_mode)) {
+            list_files_for_thread(full_path);
         }
     }
 
@@ -56,7 +103,6 @@ void list_files(const char *dir_path) {
 }
 
 
-int sd;
 
 int main(int argc, char *argv[])
 {
@@ -66,6 +112,7 @@ int main(int argc, char *argv[])
 	char buf[BUF_SIZE];
 	int read_cnt;
 	int read_size;
+
 	struct sockaddr_in serv_adr;
 	if (argc != 4) {
 		printf("Usage: %s <IP> <port> <dir name> \n", argv[0]);
@@ -82,43 +129,72 @@ int main(int argc, char *argv[])
 
 	connect(sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
 	
-	list_files(argv[3]);
 
-    // Send directory name
+	list_files_for_count(argv[3]);
+	printf("%d === \n",count);
+	//file_data = (File_data *)malloc(sizeof(File_data)*count);
+	list_files_for_thread(argv[3]);
+	
+
     write(sd, argv[3], FILE_LEN);
     printf("Sending directory: %s\n", argv[3]);
 
 
+	// // Send file data 
+	// read_size = 0;
+	// while(1)
+	// {
+	// 	read_cnt = fread((void*)buf, 1, BUF_SIZE, fp);
+	// 	read_size += read_cnt;
+	// 	if (read_size % 1024 == 0)
+	// 		printf("Send %d bytes \n", read_size);
 
-	// Send file name 
-	strcpy(file_name, argv[3]);
-	write(sd, file_name, FILE_LEN);
+	// 	if (read_cnt < BUF_SIZE)
+	// 	{
+	// 		write(sd, buf, read_cnt);
 
-	// Send file data 
-	read_size = 0;
-	while(1)
-	{
-		read_cnt = fread((void*)buf, 1, BUF_SIZE, fp);
-		read_size += read_cnt;
-		if (read_size % 1024 == 0)
-			printf("Send %d bytes \n", read_size);
-
-		if (read_cnt < BUF_SIZE)
-		{
-			write(sd, buf, read_cnt);
-
-			break;
-		}
-		write(sd, buf, BUF_SIZE);
-	}
+	// 		break;
+	// 	}
+	// 	write(sd, buf, BUF_SIZE);
+	// }
 
 	
-	shutdown(sd, SHUT_WR);
 
 	fclose(fp);
 	close(sd);
 	return 0;
 }
+
+
+void *handle_client(void *arg)
+{
+	// TODO: file receiving 
+	File_data file_data = *((File_data*)arg);
+	int clnt_sock;
+	int str_len = 0, i;
+	char msg[BUF_SIZE];
+	char file_name[FILE_LEN];
+    char dir_name[FILE_LEN];
+    int file_count=0;
+    int num_file;
+	FILE *fp;
+
+    printf("=======thread hit for %s\n",file_data.file_name );
+    
+
+	fp = fopen(file_name, "wb");
+
+	
+	// while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
+    // fwrite(msg, 1, str_len, fp);
+	// }
+	// fclose(fp);
+	// close(clnt_sock);
+	
+	return NULL;
+}
+
+
 
 void error_handling(char *message)
 {
@@ -126,3 +202,4 @@ void error_handling(char *message)
 	fputc('\n', stderr);
 	exit(1);
 }
+
