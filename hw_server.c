@@ -12,18 +12,27 @@
 #define BUF_SIZE 1024
 #define MAX_CLNT 256
 
+typedef struct File_data
+{
+	char file_name[FILE_LEN];	
+	//char file_path[FILE_LEN];
+
+}File_data;
+
+
 void error_handling(char *message);
 void *handle_client(void *arg);
 
 int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
+int has_dir = 0; //디렉토리 이름 받았는지 판단
+
 pthread_mutex_t mutx;
 
 int main(int argc, char *argv[])
 {
 	int serv_sd, clnt_sd;
 	pthread_t thread; 
-	
 	struct sockaddr_in serv_adr, clnt_adr;
 	socklen_t clnt_adr_sz;
 
@@ -74,18 +83,27 @@ void *handle_client(void *arg)
     char dir_name[FILE_LEN];
     int file_count=0;
     int num_file;
+	File_data file_data_to_send;
 	FILE *fp;
-        
+	pthread_mutex_lock(&mutx);
+    if(has_dir==0){   
     read(clnt_sock, dir_name, sizeof(dir_name));
-    printf("hit %s\n",dir_name);
-	printf("hello\n");
+	has_dir =1;
+    printf("dir name is %s\n",dir_name);
     mkdir(dir_name, 0755);
-    printf("done");
+    printf("done\n");
+    read(clnt_sock, &file_count, sizeof(file_count));
+	printf("file count %d\n",file_count);
+	}
 
+	pthread_mutex_unlock(&mutx);
 
-	read(clnt_sock, file_name, sizeof(file_name));
+	//파일 관련 구조체 받기
+	File_data file_data;
+	read(clnt_sock, &file_data, sizeof(file_data));
+	printf("file is %s==\n", file_data.file_name);
 
-	fp = fopen(file_name, "wb");
+	fp = fopen(file_data.file_name, "wb");
 
 	
 	while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
