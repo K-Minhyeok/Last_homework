@@ -22,8 +22,7 @@ typedef struct File_data
 
 pthread_t thread; 
 int count=0;
-int sd;
-File_data *file_data;
+struct sockaddr_in serv_adr;
 
 
 void error_handling(char *message);
@@ -52,11 +51,9 @@ void list_files_for_count(char *dir_path) {
         }
 
         if (S_ISREG(check_dir.st_mode)) {
-            printf("File: %s\n", full_path);
 			count++;
         }
         else if (S_ISDIR(check_dir.st_mode)) {
-            printf("Directory: %s\n", full_path);
             list_files_for_count(full_path);
         }
     }
@@ -64,7 +61,7 @@ void list_files_for_count(char *dir_path) {
     closedir(dp);
 }
 
-int list_files_for_thread(char *dir_path) {
+void list_files_for_thread(char *dir_path) {
     struct dirent *entry;
 	File_data file_data_to_send;
 
@@ -91,7 +88,7 @@ int list_files_for_thread(char *dir_path) {
             printf("File: %s\n", full_path);
 			strcpy(file_data_to_send.file_name,full_path);
 			pthread_create(&thread, NULL, handle_client, (void*)&file_data_to_send);
-			pthread_detach(thread);
+			pthread_join(thread,NULL);
 
         }
         else if (S_ISDIR(check_dir.st_mode)) {
@@ -107,13 +104,12 @@ int list_files_for_thread(char *dir_path) {
 int main(int argc, char *argv[])
 {
 	FILE *fp;
-	
+	int sd;
+
 	char file_name[FILE_LEN];
 	char buf[BUF_SIZE];
-	int read_cnt;
-	int read_size;
 
-	struct sockaddr_in serv_adr;
+
 	if (argc != 4) {
 		printf("Usage: %s <IP> <port> <dir name> \n", argv[0]);
 		exit(1);
@@ -137,7 +133,8 @@ int main(int argc, char *argv[])
 	
 
     write(sd, argv[3], FILE_LEN);
-    printf("Sending directory: %s\n", argv[3]);
+	write(sd, &count, sizeof(count));
+
 
 
 	// // Send file data 
@@ -170,26 +167,53 @@ void *handle_client(void *arg)
 {
 	// TODO: file receiving 
 	File_data file_data = *((File_data*)arg);
-	int clnt_sock;
+	int clnt_sock= socket(PF_INET, SOCK_STREAM, 0);
+	connect(clnt_sock, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
+	//이건 새로 연결할 필요가 있다 싶을 때 쓰기
+
 	int str_len = 0, i;
 	char msg[BUF_SIZE];
 	char file_name[FILE_LEN];
     char dir_name[FILE_LEN];
     int file_count=0;
     int num_file;
+	int read_cnt;
+	int read_size=0;
 	FILE *fp;
 
-    printf("=======thread hit for %s\n",file_data.file_name );
-    
+ 
 
-	fp = fopen(file_name, "wb");
+    printf("=======thread hit for %s\n",file_data.file_name);
+	write(clnt_sock, file_data.file_name, sizeof(file_data.file_name));
+
+    //파일 이름 보내기
+	//파일 보내기
+
+	fp = fopen(file_data.file_name, "rb");
+	printf("hit fp\n");
+	while(1)
+		{
+			read_cnt = fread((void*)msg, 1, BUF_SIZE, fp);
+			read_size += read_cnt;
+
+			if (read_cnt < BUF_SIZE)
+			{
+				write(clnt_sock, msg, read_cnt);
+				printf("Sent %d bytes in %s\n", read_size,file_data.file_name);
+
+				break;
+			}
+			write(clnt_sock, msg, BUF_SIZE);
+		}
+
 
 	
 	// while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
     // fwrite(msg, 1, str_len, fp);
 	// }
-	// fclose(fp);
-	// close(clnt_sock);
+
+	fclose(fp);
+	close(clnt_sock);
 	
 	return NULL;
 }

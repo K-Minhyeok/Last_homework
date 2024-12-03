@@ -89,14 +89,13 @@ int main(int argc, char *argv[]) {
             arg->sock = sd;
             strcpy(arg->file_path, file_path);
 
-            pthread_create(&threads[thread_count++], NULL, upload_file, (void *)arg);
-            usleep(100000); // 스레드 생성 간격 조정
+            pthread_create(&threads[thread_count], NULL, upload_file, (void *)arg);
+            thread_count++;
         }
     }
 
     closedir(dir);
 
-    // 모든 스레드가 끝날 때까지 대기
     for (int i = 0; i < thread_count; i++) {
         pthread_join(threads[i], NULL);
     }
