@@ -75,12 +75,10 @@ void *handle_client(void *arg)
     int file_count=0;
     int num_file;
 	FILE *fp;
-    
-    printf("hit\n");
-    
+        
     read(clnt_sock, dir_name, sizeof(dir_name));
     printf("hit %s\n",dir_name);
-
+	printf("hello\n");
     mkdir(dir_name, 0755);
     printf("done");
 
