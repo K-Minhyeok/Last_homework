@@ -103,19 +103,13 @@ void list_files_for_thread(char *dir_path) {
 
 int main(int argc, char *argv[])
 {
-	FILE *fp;
 	int sd;
-
-	char file_name[FILE_LEN];
-	char buf[BUF_SIZE];
-
 
 	if (argc != 4) {
 		printf("Usage: %s <IP> <port> <dir name> \n", argv[0]);
 		exit(1);
 	}
 	
-	fp = fopen(argv[3], "rb");
 	sd = socket(PF_INET, SOCK_STREAM, 0);   
 
 	memset(&serv_adr, 0, sizeof(serv_adr));
@@ -135,29 +129,6 @@ int main(int argc, char *argv[])
     write(sd, argv[3], FILE_LEN);
 	write(sd, &count, sizeof(count));
 
-
-
-	// // Send file data 
-	// read_size = 0;
-	// while(1)
-	// {
-	// 	read_cnt = fread((void*)buf, 1, BUF_SIZE, fp);
-	// 	read_size += read_cnt;
-	// 	if (read_size % 1024 == 0)
-	// 		printf("Send %d bytes \n", read_size);
-
-	// 	if (read_cnt < BUF_SIZE)
-	// 	{
-	// 		write(sd, buf, read_cnt);
-
-	// 		break;
-	// 	}
-	// 	write(sd, buf, BUF_SIZE);
-	// }
-
-	
-
-	fclose(fp);
 	close(sd);
 	return 0;
 }
@@ -184,12 +155,12 @@ void *handle_client(void *arg)
  
 
     printf("=======thread hit for %s\n",file_data.file_name);
+    //파일 이름 보내기
 	write(clnt_sock, file_data.file_name, sizeof(file_data.file_name));
 
-    //파일 이름 보내기
 	//파일 보내기
-
 	fp = fopen(file_data.file_name, "rb");
+	
 	printf("hit fp\n");
 	while(1)
 		{
@@ -200,17 +171,10 @@ void *handle_client(void *arg)
 			{
 				write(clnt_sock, msg, read_cnt);
 				printf("Sent %d bytes in %s\n", read_size,file_data.file_name);
-
 				break;
 			}
 			write(clnt_sock, msg, BUF_SIZE);
 		}
-
-
-	
-	// while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
-    // fwrite(msg, 1, str_len, fp);
-	// }
 
 	fclose(fp);
 	close(clnt_sock);
