@@ -15,7 +15,7 @@
 typedef struct File_data
 {
 	char file_name[FILE_LEN];	
-	//char file_path[FILE_LEN];
+	char dir_path[FILE_LEN];
 
 }File_data;
 
@@ -26,6 +26,7 @@ void *handle_client(void *arg);
 int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
 int has_dir = 0; //디렉토리 이름 받았는지 판단
+char dir_name[FILE_LEN];
 
 pthread_mutex_t mutx;
 
@@ -80,7 +81,7 @@ void *handle_client(void *arg)
 	int str_len = 0, i;
 	char msg[BUF_SIZE];
 	char file_name[FILE_LEN];
-    char dir_name[FILE_LEN];
+	char final_path[FILE_LEN];
     int file_count=0;
     int num_file;
 	File_data file_data_to_send;
@@ -101,7 +102,19 @@ void *handle_client(void *arg)
 	//파일 관련 구조체 받기
 	File_data file_data;
 	read(clnt_sock, &file_data, sizeof(file_data));
-	printf("file is %s==\n", file_data.file_name);
+	printf("%d :::: file is %s\n",clnt_sock ,file_data.file_name);
+	printf("%d :::: path is %s\n", clnt_sock,file_data.dir_path);
+
+	if (file_data.file_name[0] == '\0') { 
+    printf("%d bye\n", clnt_sock);
+    return NULL; 
+}
+
+if (access(file_data.dir_path, F_OK) == -1) {
+	mkdir(file_data.dir_path,0755);
+}
+	sprintf(final_path, "%s/%s", file_data.dir_path, file_data.file_name);
+	printf("%s : writing here\n",final_path);
 
 	fp = fopen(file_data.file_name, "wb");
 
