@@ -82,6 +82,7 @@ void *handle_client(void *arg)
 	char msg[BUF_SIZE];
 	char file_name[FILE_LEN];
     int file_count=0;
+	int file_size=0;
     int num_file;
 	File_data file_data_to_send;
 	FILE *fp;
@@ -111,16 +112,17 @@ if (access(file_data.dir_path, F_OK) == -1) {
 	
 
 	fp = fopen(file_data.file_name, "wb");
-	printf("writing here %s\n",file_data.file_name);
 	
 	while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
 	pthread_mutex_lock(&mutx);
     fwrite(msg, 1, str_len, fp);
+	file_size+=str_len;
 	pthread_mutex_unlock(&mutx);
 	}
 	fclose(fp);
 	close(clnt_sock);
-	
+	printf("[%s] Received from client ... %d bytes \n",file_data.file_name,file_size);
+
 	return NULL;
 }
 
