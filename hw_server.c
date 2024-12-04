@@ -81,7 +81,6 @@ void *handle_client(void *arg)
 	int str_len = 0, i;
 	char msg[BUF_SIZE];
 	char file_name[FILE_LEN];
-	char final_path[FILE_LEN];
     int file_count=0;
     int num_file;
 	File_data file_data_to_send;
@@ -90,11 +89,8 @@ void *handle_client(void *arg)
     if(has_dir==0){   
     read(clnt_sock, dir_name, sizeof(dir_name));
 	has_dir =1;
-    printf("dir name is %s\n",dir_name);
     mkdir(dir_name, 0755);
-    printf("done\n");
     read(clnt_sock, &file_count, sizeof(file_count));
-	printf("file count %d\n",file_count);
 	}
 
 	pthread_mutex_unlock(&mutx);
@@ -102,8 +98,7 @@ void *handle_client(void *arg)
 	//파일 관련 구조체 받기
 	File_data file_data;
 	read(clnt_sock, &file_data, sizeof(file_data));
-	printf("%d :::: file is %s\n",clnt_sock ,file_data.file_name);
-	printf("%d :::: path is %s\n", clnt_sock,file_data.dir_path);
+
 
 	if (file_data.file_name[0] == '\0') { 
     printf("%d bye\n", clnt_sock);
@@ -113,11 +108,10 @@ void *handle_client(void *arg)
 if (access(file_data.dir_path, F_OK) == -1) {
 	mkdir(file_data.dir_path,0755);
 }
-	sprintf(final_path, "%s/%s", file_data.dir_path, file_data.file_name);
-	printf("%s : writing here\n",final_path);
+	
 
 	fp = fopen(file_data.file_name, "wb");
-
+	printf("writing here %s\n",file_data.file_name);
 	
 	while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
 	pthread_mutex_lock(&mutx);
