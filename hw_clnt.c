@@ -16,7 +16,7 @@
 typedef struct File_data
 {
 	char file_name[FILE_LEN];	
-	//char file_path[FILE_LEN];
+	char dir_path[FILE_LEN];
 
 }File_data;
 
@@ -66,7 +66,8 @@ void list_files_for_thread(char *dir_path) {
 	File_data file_data_to_send;
 
     DIR *dp = opendir(dir_path);
-
+	strcpy(file_data_to_send.dir_path,dir_path);
+	
     if (dp == NULL) {
         error_handling("Directory open error");
     }
@@ -154,9 +155,9 @@ void *handle_client(void *arg)
 
  
 
-    printf("=======thread hit for %s\n",file_data.file_name);
+    printf("%d =======thread hit for %s\n", clnt_sock,file_data.file_name);
     //파일 이름 보내기
-	write(clnt_sock, file_data.file_name, sizeof(file_data.file_name));
+	write(clnt_sock, &file_data, sizeof(file_data));
 
 	//파일 보내기
 	fp = fopen(file_data.file_name, "rb");
@@ -170,7 +171,7 @@ void *handle_client(void *arg)
 			if (read_cnt < BUF_SIZE)
 			{
 				write(clnt_sock, msg, read_cnt);
-				printf("Sent %d bytes in %s\n", read_size,file_data.file_name);
+				printf("%d :: Sent %d bytes in %s\n", clnt_sock,read_size,file_data.file_name);
 				break;
 			}
 			write(clnt_sock, msg, BUF_SIZE);
@@ -190,4 +191,3 @@ void error_handling(char *message)
 	fputc('\n', stderr);
 	exit(1);
 }
-
