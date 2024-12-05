@@ -35,6 +35,7 @@ int has_dir = 0; //디렉토리 이름 받았는지 판단
 char dir_name[FILE_LEN];
 int num_file=0;
 int file_count=0;
+int quit=0;
 
 
 pthread_mutex_t mutx;
@@ -91,6 +92,7 @@ int main(int argc, char *argv[])
 void *handle_client(void *arg)
 {
 	// TODO: file receiving 
+	
 	ClientInfo *client_info = (ClientInfo*)arg;
 	int clnt_sock = client_info->sock;
 	int str_len = 0, i;
@@ -141,7 +143,10 @@ void *handle_client(void *arg)
 	
 
 	fp = fopen(file_data.file_name, "wb");
-	while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
+	while (((str_len = read(clnt_sock, msg, sizeof(msg))) != 0)&& quit ==0){
+    	if (strstr(msg, "de3ac21778e51de199438300e1a9f816c618d33a") != NULL) {
+			quit=1;
+		}
 	pthread_mutex_lock(&mutx);
     fwrite(msg, 1, str_len, fp);
 	file_size+=str_len;
