@@ -33,6 +33,9 @@ int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
 int has_dir = 0; //디렉토리 이름 받았는지 판단
 char dir_name[FILE_LEN];
+int num_file=0;
+int file_count;
+
 
 pthread_mutex_t mutx;
 
@@ -90,17 +93,20 @@ void *handle_client(void *arg)
 	int str_len = 0, i;
 	char msg[BUF_SIZE];
 	char file_name[FILE_LEN];
-    int file_count=0;
 	int file_size=0;
-    int num_file;
 	File_data file_data_to_send;
 	FILE *fp;
+
 	pthread_mutex_lock(&mutx);
+
     if(has_dir==0){   
     read(clnt_sock, dir_name, sizeof(dir_name));
 	has_dir =1;
-    mkdir(dir_name, 0755);
+	mkdir(dir_name, 0755);
+	printf("hit dir\n");
+
     read(clnt_sock, &file_count, sizeof(file_count));
+
 	}
 
 	pthread_mutex_unlock(&mutx);
@@ -111,16 +117,19 @@ void *handle_client(void *arg)
 
 
 	if (file_data.file_name[0] == '\0') { 
+
     return NULL; 
 }
 
 if (access(file_data.dir_path, F_OK) == -1) {
 	mkdir(file_data.dir_path,0755);
+
 }
 	
 
 	fp = fopen(file_data.file_name, "wb");
-	
+	//	printf("writing %s hit\n",file_data.file_name);
+
 	while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0){
 	pthread_mutex_lock(&mutx);
     fwrite(msg, 1, str_len, fp);
@@ -128,9 +137,13 @@ if (access(file_data.dir_path, F_OK) == -1) {
 	pthread_mutex_unlock(&mutx);
 	}
 	fclose(fp);
+	num_file++;
 	close(clnt_sock);
 	printf("[%s] Received from %s... %d bytes \n",file_data.file_name,client_info->ip,file_size);
-
+	if(file_count == num_file ){
+		printf("The client(%s) has completed the upload of %d/%d  \n",client_info->ip,num_file,file_count);
+		num_file=0;
+	}
 	return NULL;
 }
 
