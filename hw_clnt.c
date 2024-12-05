@@ -166,6 +166,9 @@ void *handle_client(void *arg)
 
 	//파일 보내기
 	fp = fopen(file_data.file_name, "rb");
+	printf("start reading");
+		sleep(3);
+
 	if( quit == 0){
 	while(1)
 		{
@@ -184,6 +187,9 @@ void *handle_client(void *arg)
 	close(clnt_sock);
 	
 	printf("[%s] Upload completed!...%dbytes\n",file_data.file_name,read_size);
+	pthread_mutex_lock(&mutx);
+	uploaded++;
+	pthread_mutex_unlock(&mutx);
 	} else{
 		//exit hash한 값임.
 		strcpy(msg,"de3ac21778e51de199438300e1a9f816c618d33a");
@@ -191,9 +197,7 @@ void *handle_client(void *arg)
 		printf("[%s] Upload canceled!\n",file_data.file_name);
 	}
 
-	pthread_mutex_lock(&mutx);
-	uploaded++;
-	pthread_mutex_unlock(&mutx);
+	
 	return NULL;
 }
 
