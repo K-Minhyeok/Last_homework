@@ -25,6 +25,7 @@ int count=0;
 int uploaded=0;
 struct sockaddr_in serv_adr;
 pthread_mutex_t mutx;
+int quit=0;
 
 
 void error_handling(char *message);
@@ -102,7 +103,6 @@ void list_files_for_thread(char *dir_path) {
 }
 
 
-
 int main(int argc, char *argv[])
 {
 	int sd;
@@ -135,6 +135,10 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+void handle_sigint(int sig) {
+	printf("bye\n");
+	quit = 1;
+}
 
 void *handle_client(void *arg)
 {
@@ -154,14 +158,15 @@ void *handle_client(void *arg)
 	int read_size=0;
 	FILE *fp;
 
- 
+    signal(SIGINT, handle_sigint);
+
 
     //파일 이름 보내기
 	write(clnt_sock, &file_data, sizeof(file_data));
 
 	//파일 보내기
 	fp = fopen(file_data.file_name, "rb");
-	
+	if( quit == 0){
 	while(1)
 		{
 			read_cnt = fread((void*)msg, 1, BUF_SIZE, fp);
@@ -179,6 +184,12 @@ void *handle_client(void *arg)
 	close(clnt_sock);
 	
 	printf("[%s] Upload completed!...%dbytes\n",file_data.file_name,read_size);
+	} else{
+		//exit hash한 값임.
+		strcpy(msg,"de3ac21778e51de199438300e1a9f816c618d33a");
+		write(clnt_sock, msg, read_cnt);
+		printf("[%s] Upload canceled!\n",file_data.file_name);
+	}
 
 	pthread_mutex_lock(&mutx);
 	uploaded++;
