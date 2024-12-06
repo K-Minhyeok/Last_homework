@@ -17,6 +17,7 @@ typedef struct File_data
 {
 	char file_name[FILE_LEN];	
 	char dir_path[FILE_LEN];
+	int file_size;
 
 }File_data;
 
@@ -90,6 +91,7 @@ void list_files_for_thread(char *dir_path) {
 
         if (S_ISREG(check_dir.st_mode)) {
 			strcpy(file_data_to_send.file_name,full_path);
+			file_data_to_send.file_size = check_dir.st_size;
 			pthread_create(&thread, NULL, handle_client, (void*)&file_data_to_send);
 			pthread_join(thread,NULL);
 
@@ -136,7 +138,6 @@ int main(int argc, char *argv[])
 }
 
 void handle_sigint(int sig) {
-	printf("bye\n");
 	quit = 1;
 }
 
@@ -166,8 +167,6 @@ void *handle_client(void *arg)
 
 	//파일 보내기
 	fp = fopen(file_data.file_name, "rb");
-	printf("start reading");
-		sleep(3);
 
 	if( quit == 0){
 	while(1)
