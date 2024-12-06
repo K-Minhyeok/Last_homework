@@ -17,6 +17,7 @@ typedef struct File_data
 {
 	char file_name[FILE_LEN];	
 	char dir_path[FILE_LEN];
+	int file_size;
 
 }File_data;
 
@@ -36,6 +37,7 @@ char dir_name[FILE_LEN];
 int num_file=0;
 int file_count=0;
 int quit=0;
+char last_ip[ADD_LEN];
 
 
 pthread_mutex_t mutx;
@@ -75,6 +77,7 @@ int main(int argc, char *argv[])
 		ClientInfo *client_info = malloc(sizeof(ClientInfo));
 		client_info->sock = clnt_sd;
 		inet_ntop(AF_INET, &clnt_adr.sin_addr, client_info->ip, INET_ADDRSTRLEN);
+		strcpy(last_ip , client_info->ip);
 		// TODO: pthread_create & detach 
 		pthread_mutex_lock(&mutx);
 		clnt_socks[clnt_cnt++] = clnt_sd;
@@ -84,7 +87,7 @@ int main(int argc, char *argv[])
 		pthread_detach(thread);
 
 	}
-
+	
 	close(serv_sd);
 	return 0;
 }
@@ -144,8 +147,10 @@ void *handle_client(void *arg)
 
 	fp = fopen(file_data.file_name, "wb");
 	while (((str_len = read(clnt_sock, msg, sizeof(msg))) != 0)&& quit ==0){
-    	if (strstr(msg, "de3ac21778e51de199438300e1a9f816c618d33a") != NULL) {
+
+		if (strstr(msg, "de3ac21778e51de199438300e1a9f816c618d33a") != NULL) {
 			quit=1;
+			printf("quit!\n");
 		}
 	pthread_mutex_lock(&mutx);
     fwrite(msg, 1, str_len, fp);
@@ -153,8 +158,11 @@ void *handle_client(void *arg)
 	pthread_mutex_unlock(&mutx);
 	}
 	fclose(fp);
- 	 pthread_mutex_lock(&mutx);
+ 	pthread_mutex_lock(&mutx);
+	if(file_size==file_data.file_size){
     num_file++; 
+	printf("[%s] Received from %s... %d bytes \n",file_data.file_name,client_info->ip,file_size);
+	}
     pthread_mutex_unlock(&mutx);
 
 	close(clnt_sock);
@@ -162,8 +170,6 @@ void *handle_client(void *arg)
 	if(file_size==0){
 		return NULL;
 	}
-
-	printf("[%s] Received from %s... %d bytes \n",file_data.file_name,client_info->ip,file_size);
 	if(file_count == num_file ){
 	printf("==== The client(%s) has completed the upload of %d/%d ====\n", client_info->ip, num_file, file_count);
 
@@ -172,6 +178,12 @@ void *handle_client(void *arg)
 	has_dir=0;
     pthread_mutex_unlock(&mutx);
 	}
+	
+	else if(quit ==1){
+	printf("==== File upload cancellation message is received from %s ====\n",client_info->ip );
+
+	}
+	
 	free(client_info);
 	return NULL;
 }
